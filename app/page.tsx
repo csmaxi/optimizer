@@ -48,13 +48,51 @@ export default function ImageOptimizerPro() {
   const [customHeight, setCustomHeight] = useState<number>(600)
   const [selectedPreset, setSelectedPreset] = useState<SocialPreset | null>(null)
   const [isDragging, setIsDragging] = useState(false)
-  const [outputFormat, setOutputFormat] = useState<"jpeg" | "png">("jpeg")
+  const [outputFormat, setOutputFormat] = useState<"jpeg" | "png" | "webp" | "avif">("jpeg")
   const [imagePosition, setImagePosition] = useState<ImagePosition>("center")
   const [imageUrl, setImageUrl] = useState<string>("")
   const [isLoadingUrl, setIsLoadingUrl] = useState(false)
   const [urlError, setUrlError] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [quality, setQuality] = useState<number>(0.85)
+  const [optimizedSize, setOptimizedSize] = useState<number>(0)
+
+  const formatBytes = (bytes: number): string => {
+    if (!bytes || bytes < 0) return "-"
+    const units = ["B", "KB", "MB", "GB"]
+    let unitIndex = 0
+    let value = bytes
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024
+      unitIndex++
+    }
+    const decimals = value >= 10 || unitIndex === 0 ? 0 : 1
+    return `${value.toFixed(decimals)} ${units[unitIndex]}`
+  }
+
+  const calcSavingPercent = (originalBytes: number, optimizedBytes: number): string => {
+    if (!originalBytes || !optimizedBytes) return "0%"
+    const saving = ((originalBytes - optimizedBytes) / originalBytes) * 100
+    const clamped = Math.max(0, Math.min(100, saving))
+    return `${clamped.toFixed(0)}%`
+  }
+
+  const copyOptimizedToClipboard = async () => {
+    if (!optimizedUrl) return
+          try {
+        const resp = await fetch(optimizedUrl)
+        const blob = await resp.blob()
+        const item = new ClipboardItem({ [blob.type]: blob })
+        await navigator.clipboard.write([item])
+      } catch {
+      try {
+        await navigator.clipboard.writeText(optimizedUrl)
+      } catch {
+        // ignore
+      }
+    }
+  }
 
   useEffect(() => {
     // Detectar preferencia del sistema
@@ -71,7 +109,7 @@ export default function ImageOptimizerPro() {
   }
 
   const handleFileSelect = useCallback((file: File) => {
-    if (file && file.type.match(/^image\/(jpeg|jpg|png|webp)$/)) {
+    if (file && file.type.match(/^image\/(jpeg|jpg|png|webp|avif)$/)) {
       setSelectedImage(file)
       const url = URL.createObjectURL(file)
       setPreviewUrl(url)
@@ -103,8 +141,8 @@ export default function ImageOptimizerPro() {
       const blob = await response.blob()
       const contentType = blob.type
       
-      if (!contentType.match(/^image\/(jpeg|jpg|png|webp)$/)) {
-        throw new Error('La URL no apunta a una imagen válida (JPG, PNG, WebP)')
+      if (!contentType.match(/^image\/(jpeg|jpg|png|webp|avif)$/)) {
+        throw new Error('La URL no apunta a una imagen válida (JPG, PNG, WebP, AVIF)')
       }
 
       // Crear un archivo desde el blob
@@ -142,84 +180,122 @@ export default function ImageOptimizerPro() {
   }, [])
 
   const optimizeImage = useCallback(
-    (width: number, height: number) => {
+    async (width: number, height: number) => {
       if (!selectedImage || !canvasRef.current) return
 
       const canvas = canvasRef.current
       const ctx = canvas.getContext("2d")
       if (!ctx) return
 
-      const img = new window.Image()
-      img.crossOrigin = "anonymous"
-      img.onload = () => {
-        canvas.width = width
-        canvas.height = height
-
-        // Calculate aspect ratio and fit image
-        const imgAspect = img.width / img.height
-        const canvasAspect = width / height
-
-        let drawWidth,
-          drawHeight,
-          offsetX = 0,
-          offsetY = 0
-
-        if (imgAspect > canvasAspect) {
-          drawHeight = height
-          drawWidth = height * imgAspect
-          // Calculate horizontal position
-          switch (imagePosition) {
-            case "top-left":
-            case "center-left":
-            case "bottom-left":
-              offsetX = 0
-              break
-            case "top-center":
-            case "center":
-            case "bottom-center":
-              offsetX = (width - drawWidth) / 2
-              break
-            case "top-right":
-            case "center-right":
-            case "bottom-right":
-              offsetX = width - drawWidth
-              break
-          }
-        } else {
-          drawWidth = width
-          drawHeight = width / imgAspect
-          // Calculate vertical position
-          switch (imagePosition) {
-            case "top-left":
-            case "top-center":
-            case "top-right":
-              offsetY = 0
-              break
-            case "center-left":
-            case "center":
-            case "center-right":
-              offsetY = (height - drawHeight) / 2
-              break
-            case "bottom-left":
-            case "bottom-center":
-            case "bottom-right":
-              offsetY = height - drawHeight
-              break
-          }
-        }
-
-        ctx.fillStyle = "#ffffff"
-        ctx.fillRect(0, 0, width, height)
-        ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight)
-
-        const optimizedDataUrl = canvas.toDataURL(`image/${outputFormat}`, 0.9)
-        setOptimizedUrl(optimizedDataUrl)
+      let imageSource: ImageBitmap | HTMLImageElement
+      try {
+        // Respeta orientación EXIF
+        imageSource = await createImageBitmap(selectedImage, { imageOrientation: "from-image" })
+      } catch {
+        // Fallback a HTMLImageElement si falla
+        imageSource = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const i = new window.Image()
+          i.crossOrigin = "anonymous"
+          i.onload = () => resolve(i)
+          i.onerror = reject
+          i.src = previewUrl
+        })
       }
 
-      img.src = previewUrl
+      const srcW = imageSource.width
+      const srcH = imageSource.height
+
+      canvas.width = width
+      canvas.height = height
+
+      const imgAspect = srcW / srcH
+      const canvasAspect = width / height
+
+      let drawWidth: number
+      let drawHeight: number
+      let offsetX = 0
+      let offsetY = 0
+
+      if (imgAspect > canvasAspect) {
+        drawHeight = height
+        drawWidth = height * imgAspect
+        switch (imagePosition) {
+          case "top-left":
+          case "center-left":
+          case "bottom-left":
+            offsetX = 0
+            break
+          case "top-center":
+          case "center":
+          case "bottom-center":
+            offsetX = (width - drawWidth) / 2
+            break
+          case "top-right":
+          case "center-right":
+          case "bottom-right":
+            offsetX = width - drawWidth
+            break
+        }
+      } else {
+        drawWidth = width
+        drawHeight = width / imgAspect
+        switch (imagePosition) {
+          case "top-left":
+          case "top-center":
+          case "top-right":
+            offsetY = 0
+            break
+          case "center-left":
+          case "center":
+          case "center-right":
+            offsetY = (height - drawHeight) / 2
+            break
+          case "bottom-left":
+          case "bottom-center":
+          case "bottom-right":
+            offsetY = height - drawHeight
+            break
+        }
+      }
+
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, width, height)
+      // drawImage acepta ImageBitmap o HTMLImageElement
+      ctx.drawImage(imageSource, offsetX, offsetY, drawWidth, drawHeight)
+
+      const desiredMime = `image/${outputFormat}`
+      const tryDataUrl = (mime: string) => canvas.toDataURL(mime, quality)
+      let dataUrl = tryDataUrl(desiredMime)
+      if (!dataUrl.startsWith(`data:${desiredMime}`)) {
+        // fallback a webp, luego jpeg, luego png
+        const webp = tryDataUrl("image/webp")
+        if (webp.startsWith("data:image/webp")) dataUrl = webp
+        else {
+          const jpeg = tryDataUrl("image/jpeg")
+          if (jpeg.startsWith("data:image/jpeg")) dataUrl = jpeg
+          else dataUrl = tryDataUrl("image/png")
+        }
+      }
+      setOptimizedUrl(dataUrl)
+
+      // Calcular bytes aproximados
+      try {
+        const base64 = dataUrl.split(",")[1] || ""
+        const bytes = typeof atob === "function" ? atob(base64).length : Math.ceil(base64.length * 0.75)
+        setOptimizedSize(bytes)
+      } catch {
+        setOptimizedSize(0)
+      }
     },
-    [selectedImage, previewUrl, outputFormat, imagePosition],
+    [selectedImage, previewUrl, outputFormat, imagePosition, quality],
   )
+
+  useEffect(() => {
+    if (!selectedImage) return
+    const width = selectedPreset ? selectedPreset.width : customWidth
+    const height = selectedPreset ? selectedPreset.height : customHeight
+    optimizeImage(width, height)
+  }, [outputFormat, quality, selectedImage, selectedPreset, customWidth, customHeight, optimizeImage])
 
   const handlePresetClick = (preset: SocialPreset) => {
     setSelectedPreset(preset)
@@ -352,11 +428,12 @@ export default function ImageOptimizerPro() {
                         <Badge variant="secondary" className="glass text-xs">JPG</Badge>
                         <Badge variant="secondary" className="glass text-xs">PNG</Badge>
                         <Badge variant="secondary" className="glass text-xs">WebP</Badge>
+                        <Badge variant="secondary" className="glass text-xs">AVIF</Badge>
                       </div>
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        accept="image/jpeg,image/jpg,image/png,image/webp,image/avif"
                         onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
                         className="hidden"
                       />
@@ -429,7 +506,7 @@ export default function ImageOptimizerPro() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="relative">
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant={outputFormat === "jpeg" ? "default" : "outline"}
                       onClick={() => setOutputFormat("jpeg")}
@@ -454,6 +531,43 @@ export default function ImageOptimizerPro() {
                       <FileImage className="w-4 h-4 mr-2" />
                       PNG
                     </Button>
+                    <Button
+                      variant={outputFormat === "webp" ? "default" : "outline"}
+                      onClick={() => setOutputFormat("webp")}
+                      className={`flex-1 transition-all hover-scale text-sm py-2 ${
+                        outputFormat === "webp" 
+                          ? "gradient-secondary text-white shadow-glow" 
+                          : "glass hover:bg-secondary/50"
+                      }`}
+                    >
+                      <FileImage className="w-4 h-4 mr-2" />
+                      WebP
+                    </Button>
+                    <Button
+                      variant={outputFormat === "avif" ? "default" : "outline"}
+                      onClick={() => setOutputFormat("avif")}
+                      className={`flex-1 transition-all hover-scale text-sm py-2 ${
+                        outputFormat === "avif" 
+                          ? "gradient-secondary text-white shadow-glow" 
+                          : "glass hover:bg-secondary/50"
+                      }`}
+                    >
+                      <FileImage className="w-4 h-4 mr-2" />
+                      AVIF
+                    </Button>
+                  </div>
+                  <div className="mt-4">
+                    <Label className="text-sm font-medium">Calidad: {(quality * 100) | 0}%</Label>
+                    <input
+                      type="range"
+                      min={0.4}
+                      max={1}
+                      step={0.05}
+                      value={quality}
+                      onChange={(e) => setQuality(parseFloat(e.target.value))}
+                      className="w-full mt-2 accent-current"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">AVIF/WebP suelen ofrecer mejor compresión con similar calidad.</p>
                   </div>
                 </CardContent>
               </Card>
@@ -594,6 +708,7 @@ export default function ImageOptimizerPro() {
                           width={400}
                           height={160}
                           className="w-full h-40 object-contain rounded-md"
+                          unoptimized
                         />
                       </div>
                     </div>
@@ -618,7 +733,27 @@ export default function ImageOptimizerPro() {
                             width={400}
                             height={160}
                             className="w-full h-40 object-contain rounded-md"
+                            unoptimized
                           />
+                        </div>
+                        <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
+                          <div className="flex gap-2">
+                            {selectedImage && (
+                              <Badge variant="secondary" className="glass">
+                                Original: {formatBytes(selectedImage.size)}
+                              </Badge>
+                            )}
+                            {optimizedUrl && optimizedSize > 0 && (
+                              <Badge variant="secondary" className="glass">
+                                Optimizada: {formatBytes(optimizedSize)}
+                              </Badge>
+                            )}
+                          </div>
+                          {selectedImage && optimizedSize > 0 && (
+                            <Badge className="gradient-success text-white">
+                              Ahorro: {calcSavingPercent(selectedImage.size, optimizedSize)}
+                            </Badge>
+                          )}
                         </div>
                         <Button 
                           onClick={downloadOptimized} 
@@ -628,6 +763,16 @@ export default function ImageOptimizerPro() {
                           <Download className="w-4 h-4 mr-2 animate-pulse" />
                           Descargar
                         </Button>
+                        {optimizedUrl && (
+                          <Button 
+                            onClick={copyOptimizedToClipboard}
+                            className="w-full mt-2 glass hover-scale"
+                            size="sm"
+                            variant="outline"
+                          >
+                            Copiar al portapapeles
+                          </Button>
+                        )}
                       </div>
                     </>
                   )}
