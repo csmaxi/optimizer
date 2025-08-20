@@ -39,6 +39,8 @@ const socialPresets: SocialPreset[] = [
 
 type ImagePosition = "top-left" | "top-center" | "top-right" | "center-left" | "center" | "center-right" | "bottom-left" | "bottom-center" | "bottom-right"
 
+type ObjectFitMode = "cover" | "contain" | "fill"
+
 export default function ImageOptimizerPro() {
   const [darkMode, setDarkMode] = useState(false)
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
@@ -57,6 +59,7 @@ export default function ImageOptimizerPro() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [quality, setQuality] = useState<number>(0.85)
   const [optimizedSize, setOptimizedSize] = useState<number>(0)
+  const [objectFit, setObjectFit] = useState<ObjectFitMode>("cover")
 
   const formatBytes = (bytes: number): string => {
     if (!bytes || bytes < 0) return "-"
@@ -216,46 +219,98 @@ export default function ImageOptimizerPro() {
       let offsetX = 0
       let offsetY = 0
 
-      if (imgAspect > canvasAspect) {
-        drawHeight = height
-        drawWidth = height * imgAspect
-        switch (imagePosition) {
-          case "top-left":
-          case "center-left":
-          case "bottom-left":
-            offsetX = 0
-            break
-          case "top-center":
-          case "center":
-          case "bottom-center":
-            offsetX = (width - drawWidth) / 2
-            break
-          case "top-right":
-          case "center-right":
-          case "bottom-right":
-            offsetX = width - drawWidth
-            break
+      if (objectFit === "cover") {
+        if (imgAspect > canvasAspect) {
+          drawHeight = height
+          drawWidth = height * imgAspect
+          switch (imagePosition) {
+            case "top-left":
+            case "center-left":
+            case "bottom-left":
+              offsetX = 0
+              break
+            case "top-center":
+            case "center":
+            case "bottom-center":
+              offsetX = (width - drawWidth) / 2
+              break
+            case "top-right":
+            case "center-right":
+            case "bottom-right":
+              offsetX = width - drawWidth
+              break
+          }
+        } else {
+          drawWidth = width
+          drawHeight = width / imgAspect
+          switch (imagePosition) {
+            case "top-left":
+            case "top-center":
+            case "top-right":
+              offsetY = 0
+              break
+            case "center-left":
+            case "center":
+            case "center-right":
+              offsetY = (height - drawHeight) / 2
+              break
+            case "bottom-left":
+            case "bottom-center":
+            case "bottom-right":
+              offsetY = height - drawHeight
+              break
+          }
+        }
+      } else if (objectFit === "contain") {
+        if (imgAspect > canvasAspect) {
+          // imagen más ancha: encajar por ancho, barras arriba/abajo
+          drawWidth = width
+          drawHeight = width / imgAspect
+          switch (imagePosition) {
+            case "top-left":
+            case "top-center":
+            case "top-right":
+              offsetY = 0
+              break
+            case "center-left":
+            case "center":
+            case "center-right":
+              offsetY = (height - drawHeight) / 2
+              break
+            case "bottom-left":
+            case "bottom-center":
+            case "bottom-right":
+              offsetY = height - drawHeight
+              break
+          }
+        } else {
+          // imagen más alta: encajar por alto, barras laterales
+          drawHeight = height
+          drawWidth = height * imgAspect
+          switch (imagePosition) {
+            case "top-left":
+            case "center-left":
+            case "bottom-left":
+              offsetX = 0
+              break
+            case "top-center":
+            case "center":
+            case "bottom-center":
+              offsetX = (width - drawWidth) / 2
+              break
+            case "top-right":
+            case "center-right":
+            case "bottom-right":
+              offsetX = width - drawWidth
+              break
+          }
         }
       } else {
+        // fill: deforma para ocupar todo el lienzo
         drawWidth = width
-        drawHeight = width / imgAspect
-        switch (imagePosition) {
-          case "top-left":
-          case "top-center":
-          case "top-right":
-            offsetY = 0
-            break
-          case "center-left":
-          case "center":
-          case "center-right":
-            offsetY = (height - drawHeight) / 2
-            break
-          case "bottom-left":
-          case "bottom-center":
-          case "bottom-right":
-            offsetY = height - drawHeight
-            break
-        }
+        drawHeight = height
+        offsetX = 0
+        offsetY = 0
       }
 
       ctx.fillStyle = "#ffffff"
@@ -287,7 +342,7 @@ export default function ImageOptimizerPro() {
         setOptimizedSize(0)
       }
     },
-    [selectedImage, previewUrl, outputFormat, imagePosition, quality],
+    [selectedImage, previewUrl, outputFormat, imagePosition, objectFit, quality],
   )
 
   useEffect(() => {
@@ -675,6 +730,57 @@ export default function ImageOptimizerPro() {
                   <Badge variant="secondary" className="glass px-3 py-1 text-sm">
                     <Move className="w-3 h-3 mr-1" />
                     {imagePosition.replace("-", " ").replace(/\b\w/g, l => l.toUpperCase())}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Control de Ajuste (object-fit) */}
+            <Card className="glass border-0 shadow-elegant hover-lift overflow-hidden group">
+              <div className="absolute inset-0 gradient-success opacity-5 group-hover:opacity-10 transition-opacity duration-500" />
+              <CardHeader className="relative">
+                <CardTitle className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg gradient-success">
+                    <Settings className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-xl font-bold">Ajuste</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="relative">
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: "cover", label: "Cover" },
+                    { value: "contain", label: "Contain" },
+                    { value: "fill", label: "Fill" },
+                  ].map((opt) => (
+                    <Button
+                      key={opt.value}
+                      variant={objectFit === (opt.value as ObjectFitMode) ? "default" : "outline"}
+                      size="sm"
+                      className={`h-10 text-sm font-semibold transition-all hover-scale ${
+                        objectFit === (opt.value as ObjectFitMode)
+                          ? "gradient-success text-white shadow-glow"
+                          : "glass hover:bg-secondary/50"
+                      }`}
+                      onClick={() => {
+                        setObjectFit(opt.value as ObjectFitMode)
+                        if (selectedImage) {
+                          if (selectedPreset) {
+                            optimizeImage(selectedPreset.width, selectedPreset.height)
+                          } else {
+                            optimizeImage(customWidth, customHeight)
+                          }
+                        }
+                      }}
+                      disabled={!selectedImage}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+                <div className="text-center mt-3">
+                  <Badge variant="secondary" className="glass px-3 py-1 text-sm">
+                    {objectFit.replace(/^./, (l) => l.toUpperCase())}
                   </Badge>
                 </div>
               </CardContent>
