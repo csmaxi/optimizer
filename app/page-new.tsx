@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Popover, PopoverTrigger } from "@/components/ui/popover"
 import { 
-  Upload, Download, Smartphone, Monitor, Camera, Move,
+  Upload, Download, Smartphone, Monitor, Camera, 
   FileImage, Palette, Moon, Sun,
   Grid3x3, Eye
 } from "lucide-react"
@@ -20,10 +20,7 @@ import {
   LoadImagePopover, 
   WatermarkPopover, 
   PresetsPopover, 
-  FormatQualityPopover,
-  PositionPopover,
-  AdjustmentsPopover,
-  ResponsivePopover
+  FormatQualityPopover 
 } from "@/components/optimizer/popovers"
 import useWatermark from "@/components/optimizer/hooks/useWatermark"
 
@@ -36,7 +33,6 @@ interface SocialPreset {
   icon: React.ReactNode
 }
 
-type ImagePosition = "top-left" | "top-center" | "top-right" | "center-left" | "center" | "center-right" | "bottom-left" | "bottom-center" | "bottom-right"
 type ObjectFitMode = "cover" | "contain" | "fill"
 
 // Presets sociales
@@ -59,7 +55,7 @@ export default function ImageOptimizerPro() {
   const [selectedPreset, setSelectedPreset] = useState<SocialPreset | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [outputFormat, setOutputFormat] = useState<"jpeg" | "png" | "webp" | "avif">("jpeg")
-  const [imagePosition, setImagePosition] = useState<ImagePosition>("center")
+
   const [imageUrl, setImageUrl] = useState<string>("")
   const [isLoadingUrl, setIsLoadingUrl] = useState(false)
   const [urlError, setUrlError] = useState<string>("")
@@ -67,25 +63,21 @@ export default function ImageOptimizerPro() {
   // Estados de UI
   const [fileName, setFileName] = useState<string>("")
   const [showDownloadModal, setShowDownloadModal] = useState(false)
-  const [objectFit, setObjectFit] = useState<ObjectFitMode>("cover")
+  const [objectFit] = useState<ObjectFitMode>("cover")
   
   // Estados de ajustes
-  const [brightness, setBrightness] = useState<number>(100)
-  const [contrast, setContrast] = useState<number>(100)
-  const [saturation, setSaturation] = useState<number>(100)
-  const [rotation, setRotation] = useState<number>(0)
+  const [brightness] = useState<number>(100)
+  const [contrast] = useState<number>(100)
+  const [saturation] = useState<number>(100)
+  const [rotation] = useState<number>(0)
   
   // Estados de crop
   const [cropMode, setCropMode] = useState<boolean>(false)
-  const [cropData, setCropData] = useState<{x: number, y: number, width: number, height: number} | null>(null)
+  const [, setCropData] = useState<{x: number, y: number, width: number, height: number} | null>(null)
   
   // Estados multi-imagen
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0)
-  
-  // Estados para responsive images
-  const [generateResponsive, setGenerateResponsive] = useState<boolean>(false)
-  const [responsiveSizes] = useState<number[]>([320, 640, 768, 1024, 1280, 1920])
   
   // Referencias
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -200,144 +192,42 @@ export default function ImageOptimizerPro() {
         ctx.translate(-width / 2, -height / 2)
       }
 
-      // Si hay crop data, aplicar el crop
-      if (cropData && cropMode) {
-        // Calcular las coordenadas del crop en relación a la imagen original
-        const imgElement = document.querySelector('img[alt="Original"]') as HTMLImageElement
-        if (imgElement) {
-          const imgRect = imgElement.getBoundingClientRect()
-          const imgNaturalWidth = imgElement.naturalWidth
-          const imgNaturalHeight = imgElement.naturalHeight
-          
-          // Calcular la escala entre el tamaño natural y el mostrado
-          const scaleX = imgNaturalWidth / imgRect.width
-          const scaleY = imgNaturalHeight / imgRect.height
-          
-          // Aplicar el crop
-          const cropX = cropData.x * scaleX
-          const cropY = cropData.y * scaleY
-          const cropWidth = cropData.width * scaleX
-          const cropHeight = cropData.height * scaleY
-          
-          ctx.fillStyle = "#ffffff"
-          ctx.fillRect(0, 0, width, height)
-          
-          // Dibujar solo la parte recortada
-          ctx.drawImage(
-            imageSource,
-            cropX, cropY, cropWidth, cropHeight,  // Source rectangle (crop)
-            0, 0, width, height                    // Destination rectangle (canvas)
-          )
-        } else {
-          // Fallback: dibujar imagen completa si no se puede calcular el crop
-          ctx.fillStyle = "#ffffff"
-          ctx.fillRect(0, 0, width, height)
-          ctx.drawImage(imageSource, 0, 0, width, height)
-        }
-      } else {
-        // Sin crop: aplicar lógica normal de object-fit
-        const srcW = imageSource.width
-        const srcH = imageSource.height
-        const imgAspect = srcW / srcH
-        const canvasAspect = width / height
+      // Lógica de posicionamiento simplificada
+      const srcW = imageSource.width
+      const srcH = imageSource.height
+      const imgAspect = srcW / srcH
+      const canvasAspect = width / height
 
-        let drawWidth: number, drawHeight: number, offsetX = 0, offsetY = 0
+      let drawWidth: number, drawHeight: number, offsetX = 0, offsetY = 0
 
-        if (objectFit === "cover") {
-          if (imgAspect > canvasAspect) {
-            drawHeight = height
-            drawWidth = height * imgAspect
-            switch (imagePosition) {
-              case "top-left":
-              case "center-left":
-              case "bottom-left":
-                offsetX = 0
-                break
-              case "top-center":
-              case "center":
-              case "bottom-center":
-                offsetX = (width - drawWidth) / 2
-                break
-              case "top-right":
-              case "center-right":
-              case "bottom-right":
-                offsetX = width - drawWidth
-                break
-            }
-          } else {
-            drawWidth = width
-            drawHeight = width / imgAspect
-            switch (imagePosition) {
-              case "top-left":
-              case "top-center":
-              case "top-right":
-                offsetY = 0
-                break
-              case "center-left":
-              case "center":
-              case "center-right":
-                offsetY = (height - drawHeight) / 2
-                break
-              case "bottom-left":
-              case "bottom-center":
-              case "bottom-right":
-                offsetY = height - drawHeight
-                break
-            }
-          }
-        } else if (objectFit === "contain") {
-          if (imgAspect > canvasAspect) {
-            drawWidth = width
-            drawHeight = width / imgAspect
-            switch (imagePosition) {
-              case "top-left":
-              case "top-center":
-              case "top-right":
-                offsetY = 0
-                break
-              case "center-left":
-              case "center":
-              case "center-right":
-                offsetY = (height - drawHeight) / 2
-                break
-              case "bottom-left":
-              case "bottom-center":
-              case "bottom-right":
-                offsetY = height - drawHeight
-                break
-            }
-          } else {
-            drawHeight = height
-            drawWidth = height * imgAspect
-            switch (imagePosition) {
-              case "top-left":
-              case "center-left":
-              case "bottom-left":
-                offsetX = 0
-                break
-              case "top-center":
-              case "center":
-              case "bottom-center":
-                offsetX = (width - drawWidth) / 2
-                break
-              case "top-right":
-              case "center-right":
-              case "bottom-right":
-                offsetX = width - drawWidth
-                break
-            }
-          }
+      if (objectFit === "cover") {
+        if (imgAspect > canvasAspect) {
+          drawHeight = height
+          drawWidth = height * imgAspect
+          offsetX = (width - drawWidth) / 2
         } else {
           drawWidth = width
-          drawHeight = height
-          offsetX = 0
-          offsetY = 0
+          drawHeight = width / imgAspect
+          offsetY = (height - drawHeight) / 2
         }
-
-        ctx.fillStyle = "#ffffff"
-        ctx.fillRect(0, 0, width, height)
-        ctx.drawImage(imageSource, offsetX, offsetY, drawWidth, drawHeight)
+      } else if (objectFit === "contain") {
+        if (imgAspect > canvasAspect) {
+          drawWidth = width
+          drawHeight = width / imgAspect
+          offsetY = (height - drawHeight) / 2
+        } else {
+          drawHeight = height
+          drawWidth = height * imgAspect
+          offsetX = (width - drawWidth) / 2
+        }
+      } else {
+        drawWidth = width
+        drawHeight = height
       }
+
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, width, height)
+      ctx.drawImage(imageSource, offsetX, offsetY, drawWidth, drawHeight)
       
       if (rotation !== 0) {
         ctx.restore()
@@ -358,7 +248,7 @@ export default function ImageOptimizerPro() {
     } catch (error) {
       console.error('Error optimizing image:', error)
     }
-  }, [selectedImage, brightness, contrast, saturation, rotation, objectFit, outputFormat, quality, watermarkHook, imagePosition, cropData, cropMode])
+  }, [selectedImage, brightness, contrast, saturation, rotation, objectFit, outputFormat, quality, watermarkHook])
 
   useEffect(() => {
     if (!selectedImage) return
@@ -393,52 +283,6 @@ export default function ImageOptimizerPro() {
     link.href = optimizedUrl
     link.click()
     setShowDownloadModal(false)
-  }
-
-  // Función para descargar pack responsive
-  const downloadResponsiveImages = async () => {
-    if (!selectedImage || !optimizedUrl) return
-
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
-    const img = new window.Image()
-    img.onload = async () => {
-      const baseName = selectedImage.name.split('.')[0]
-      
-      for (const size of responsiveSizes) {
-        // Calcular dimensiones manteniendo aspect ratio
-        const aspectRatio = img.width / img.height
-        let newWidth = size
-        let newHeight = size / aspectRatio
-
-        if (newHeight > size) {
-          newHeight = size
-          newWidth = size * aspectRatio
-        }
-
-        canvas.width = newWidth
-        canvas.height = newHeight
-        
-        // Aplicar filtros
-        ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`
-        
-        // Dibujar imagen redimensionada
-        ctx.drawImage(img, 0, 0, newWidth, newHeight)
-        
-        // Descargar
-        const dataUrl = canvas.toDataURL(`image/${outputFormat}`, quality)
-        const a = document.createElement("a")
-        a.href = dataUrl
-        a.download = `${baseName}-${size}w.${outputFormat}`
-        a.click()
-        
-        // Esperar entre descargas
-        await new Promise(resolve => setTimeout(resolve, 400))
-      }
-    }
-    img.src = optimizedUrl
   }
 
   return (
@@ -477,7 +321,7 @@ export default function ImageOptimizerPro() {
                 handleDrop={handleDrop}
                 handleDragOver={handleDragOver}
                 handleDragLeave={handleDragLeave}
-                fileInputRef={fileInputRef as React.RefObject<HTMLInputElement>}
+                fileInputRef={fileInputRef}
                 handleFileSelect={handleFileSelect}
                 selectedImages={selectedImages}
                 setSelectedImages={setSelectedImages}
@@ -498,7 +342,7 @@ export default function ImageOptimizerPro() {
               <WatermarkPopover
                 applyWatermark={watermarkHook.applyWatermark}
                 setApplyWatermark={watermarkHook.setApplyWatermark}
-                watermarkFileInputRef={watermarkHook.watermarkFileInputRef as React.RefObject<HTMLInputElement>}
+                watermarkFileInputRef={watermarkHook.watermarkFileInputRef}
                 handleWatermarkFileSelect={watermarkHook.handleWatermarkFileSelect}
                 watermarkFile={watermarkHook.watermarkFile}
                 setWatermarkFile={watermarkHook.setWatermarkFile}
@@ -543,62 +387,6 @@ export default function ImageOptimizerPro() {
               <FormatQualityPopover
                 outputFormat={outputFormat}
                 setOutputFormat={setOutputFormat}
-              />
-            </Popover>
-
-            <Separator orientation="vertical" className="h-6" />
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 h-10">
-                  <Move className="w-4 h-4" />
-                  Posición
-                </Button>
-              </PopoverTrigger>
-              <PositionPopover
-                imagePosition={imagePosition}
-                setImagePosition={setImagePosition}
-                objectFit={objectFit}
-                setObjectFit={setObjectFit}
-                rotation={rotation}
-                setRotation={setRotation}
-              />
-            </Popover>
-
-            <Separator orientation="vertical" className="h-6" />
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 h-10">
-                  <Sun className="w-4 h-4" />
-                  Ajustes
-                </Button>
-              </PopoverTrigger>
-              <AdjustmentsPopover
-                brightness={brightness}
-                setBrightness={setBrightness}
-                contrast={contrast}
-                setContrast={setContrast}
-                saturation={saturation}
-                setSaturation={setSaturation}
-              />
-            </Popover>
-
-            <Separator orientation="vertical" className="h-6" />
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 h-10">
-                  <Monitor className="w-4 h-4" />
-                  Responsive
-                </Button>
-              </PopoverTrigger>
-              <ResponsivePopover
-                generateResponsive={generateResponsive}
-                setGenerateResponsive={setGenerateResponsive}
-                downloadResponsiveImages={downloadResponsiveImages}
-                optimizedUrl={optimizedUrl}
-                responsiveSizes={responsiveSizes}
               />
             </Popover>
 
