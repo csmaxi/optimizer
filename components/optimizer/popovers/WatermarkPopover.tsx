@@ -34,8 +34,8 @@ export const WatermarkPopover: React.FC<WatermarkPopoverProps> = ({
   watermarkFileInputRef,
   handleWatermarkFileSelect,
   watermarkFile,
-  setWatermarkFile,
-  setWatermarkPreviewUrl,
+  setWatermarkFile, // eslint-disable-line @typescript-eslint/no-unused-vars
+  setWatermarkPreviewUrl, // eslint-disable-line @typescript-eslint/no-unused-vars
   watermarkPreviewUrl,
   watermarkPosition,
   setWatermarkPosition,
@@ -57,7 +57,7 @@ export const WatermarkPopover: React.FC<WatermarkPopoverProps> = ({
       <CardContent className="space-y-4">
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
-            Sube tu propia marca de agua o usa la predeterminada Glacial.png
+            Sube tu propia marca de agua personalizada
           </p>
         </div>
         
@@ -88,40 +88,32 @@ export const WatermarkPopover: React.FC<WatermarkPopoverProps> = ({
                   <Upload className="w-3 h-3 mr-2" />
                   Seleccionar Archivo
                 </Button>
-                <Button
-                  onClick={() => {
-                    setWatermarkFile(null)
-                    setWatermarkPreviewUrl("/Glacial.png")
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs"
-                >
-                  Usar Glacial
-                </Button>
+
               </div>
               
               {/* Preview de la marca de agua */}
-              <div className="flex items-center gap-2 p-2 bg-muted/50 rounded border">
-                <div className="w-8 h-8 bg-white rounded border flex items-center justify-center overflow-hidden">
-                  <Image
-                    src={watermarkPreviewUrl}
-                    alt="Preview marca de agua"
-                    width={32}
-                    height={32}
-                    className="object-contain"
-                    unoptimized
-                  />
+              {watermarkPreviewUrl && (
+                <div className="flex items-center gap-2 p-2 bg-muted/50 rounded border">
+                  <div className="w-8 h-8 bg-white rounded border flex items-center justify-center overflow-hidden">
+                    <Image
+                      src={watermarkPreviewUrl}
+                      alt="Preview marca de agua"
+                      width={32}
+                      height={32}
+                      className="object-contain"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">
+                      {watermarkFile ? watermarkFile.name : "Marca de agua personalizada"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {watermarkFile ? `${(watermarkFile.size / 1024).toFixed(1)} KB` : "Marca de agua cargada"}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">
-                    {watermarkFile ? watermarkFile.name : "Glacial.png (predeterminada)"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {watermarkFile ? `${(watermarkFile.size / 1024).toFixed(1)} KB` : "Marca de agua por defecto"}
-                  </p>
-                </div>
-              </div>
+              )}
               
               <input
                 ref={watermarkFileInputRef}

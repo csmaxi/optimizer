@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 
 export const useWatermark = () => {
   // Estados para marca de agua
-  const [applyWatermark, setApplyWatermark] = useState<boolean>(true)
+  const [applyWatermark, setApplyWatermark] = useState<boolean>(false)
   const [watermarkOpacity, setWatermarkOpacity] = useState<number>(0.3)
   const [watermarkSize, setWatermarkSize] = useState<number>(0.15) // 15% del tamaño de la imagen
   const [watermarkFile, setWatermarkFile] = useState<File | null>(null)
-  const [watermarkPreviewUrl, setWatermarkPreviewUrl] = useState<string>("/Glacial.png") // Default
+  const [watermarkPreviewUrl, setWatermarkPreviewUrl] = useState<string>("") // Sin marca de agua predeterminada
   const [watermarkPosition, setWatermarkPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center'>('bottom-right')
   const watermarkFileInputRef = useRef<HTMLInputElement>(null)
 

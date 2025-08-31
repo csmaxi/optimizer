@@ -369,9 +369,13 @@ export default function ImageOptimizerPro() {
                 </Button>
               </PopoverTrigger>
               <PresetsPopover
-                socialPresets={socialPresets}
+                presets={socialPresets}
                 selectedPreset={selectedPreset}
-                handlePresetClick={handlePresetClick}
+                onPresetSelect={handlePresetClick}
+                onCustomSizeChange={(width, height) => {
+                  setCustomWidth(width)
+                  setCustomHeight(height)
+                }}
               />
             </Popover>
 

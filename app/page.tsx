@@ -8,9 +8,9 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Popover, PopoverTrigger } from "@/components/ui/popover"
 import { 
-  Upload, Download, Smartphone, Monitor, Camera, Move,
+  Upload, Download, Monitor, Camera, Move,
   FileImage, Palette, Moon, Sun,
-  Grid3x3, Eye
+  Eye, Sparkles
 } from "lucide-react"
 
 // Componentes extraídos
@@ -19,34 +19,31 @@ import DownloadModal from "@/components/optimizer/modals/DownloadModal"
 import { 
   LoadImagePopover, 
   WatermarkPopover, 
-  PresetsPopover, 
   FormatQualityPopover,
   PositionPopover,
   AdjustmentsPopover,
-  ResponsivePopover
+  ResponsivePopover,
+  SocialTemplatesPopover
 } from "@/components/optimizer/popovers"
 import useWatermark from "@/components/optimizer/hooks/useWatermark"
 
 // Tipos
-interface SocialPreset {
+type ImagePosition = "top-left" | "top-center" | "top-right" | "center-left" | "center" | "center-right" | "bottom-left" | "bottom-center" | "bottom-right"
+type ObjectFitMode = "cover" | "contain" | "fill"
+
+interface SocialTemplate {
+  id: string
   name: string
   platform: string
   width: number
   height: number
   icon: React.ReactNode
+  description: string
+  category: 'post' | 'story' | 'cover' | 'ad' | 'thumbnail'
+  color: string
 }
 
-type ImagePosition = "top-left" | "top-center" | "top-right" | "center-left" | "center" | "center-right" | "bottom-left" | "bottom-center" | "bottom-right"
-type ObjectFitMode = "cover" | "contain" | "fill"
 
-// Presets sociales
-const socialPresets: SocialPreset[] = [
-  { name: "Instagram Post", platform: "Instagram", width: 1080, height: 1080, icon: <Camera className="w-4 h-4" /> },
-  { name: "Instagram Story", platform: "Instagram", width: 1080, height: 1920, icon: <Smartphone className="w-4 h-4" /> },
-  { name: "Facebook Cover", platform: "Facebook", width: 820, height: 312, icon: <Monitor className="w-4 h-4" /> },
-  { name: "Facebook Post", platform: "Facebook", width: 1200, height: 630, icon: <Camera className="w-4 h-4" /> },
-  { name: "X/Twitter Post", platform: "X/Twitter", width: 1200, height: 675, icon: <Camera className="w-4 h-4" /> },
-]
 
 export default function ImageOptimizerPro() {
   // Estados principales
@@ -56,7 +53,6 @@ export default function ImageOptimizerPro() {
   const [optimizedUrl, setOptimizedUrl] = useState<string>("")
   const [customWidth, setCustomWidth] = useState<number>(800)
   const [customHeight, setCustomHeight] = useState<number>(600)
-  const [selectedPreset, setSelectedPreset] = useState<SocialPreset | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [outputFormat, setOutputFormat] = useState<"jpeg" | "png" | "webp" | "avif">("jpeg")
   const [imagePosition, setImagePosition] = useState<ImagePosition>("center")
@@ -87,6 +83,9 @@ export default function ImageOptimizerPro() {
   const [generateResponsive, setGenerateResponsive] = useState<boolean>(false)
   const [responsiveSizes] = useState<number[]>([320, 640, 768, 1024, 1280, 1920])
   
+  // Estado para plantillas sociales
+  const [selectedSocialTemplate, setSelectedSocialTemplate] = useState<SocialTemplate | null>(null)
+  
   // Referencias
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -116,7 +115,6 @@ export default function ImageOptimizerPro() {
       const url = URL.createObjectURL(file)
       setPreviewUrl(url)
       setOptimizedUrl("")
-      setSelectedPreset(null)
       setUrlError("")
     }
   }, [])
@@ -362,21 +360,22 @@ export default function ImageOptimizerPro() {
 
   useEffect(() => {
     if (!selectedImage) return
-    const width = selectedPreset ? selectedPreset.width : customWidth
-    const height = selectedPreset ? selectedPreset.height : customHeight
+    const width = selectedSocialTemplate ? selectedSocialTemplate.width : customWidth
+    const height = selectedSocialTemplate ? selectedSocialTemplate.height : customHeight
     optimizeImage(width, height)
-  }, [selectedImage, selectedPreset, customWidth, customHeight, optimizeImage])
+  }, [selectedImage, selectedSocialTemplate, customWidth, customHeight, optimizeImage])
 
-  // Funciones de presets
-  const handlePresetClick = (preset: SocialPreset) => {
-    setSelectedPreset(preset)
-    setCustomWidth(preset.width)
-    setCustomHeight(preset.height)
+  // Función para manejar plantillas sociales
+  const handleSocialTemplateSelect = (template: SocialTemplate) => {
+    setSelectedSocialTemplate(template)
+    setCustomWidth(template.width)
+    setCustomHeight(template.height)
   }
 
   // Funciones de descarga
   const openDownloadModal = () => {
-    const defaultName = selectedPreset?.name.toLowerCase().replace(/\s+/g, "-") || "imagen-optimizada"
+    const defaultName = selectedSocialTemplate?.name.toLowerCase().replace(/\s+/g, "-") || 
+                       "imagen-optimizada"
     setFileName(defaultName)
     setShowDownloadModal(true)
   }
@@ -517,17 +516,18 @@ export default function ImageOptimizerPro() {
 
             <Separator orientation="vertical" className="h-6" />
 
+
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2 h-10">
-                  <Grid3x3 className="w-4 h-4" />
-                  Presets
+                  <Sparkles className="w-4 h-4" />
+                  Plantillas
                 </Button>
               </PopoverTrigger>
-              <PresetsPopover
-                socialPresets={socialPresets}
-                selectedPreset={selectedPreset}
-                handlePresetClick={handlePresetClick}
+              <SocialTemplatesPopover
+                onTemplateSelect={handleSocialTemplateSelect}
+                selectedTemplate={selectedSocialTemplate}
               />
             </Popover>
 
@@ -675,8 +675,8 @@ export default function ImageOptimizerPro() {
                                 onCrop={(data) => {
                                   setCropData(data)
                                   setCropMode(false)
-                                  const width = selectedPreset ? selectedPreset.width : customWidth
-                                  const height = selectedPreset ? selectedPreset.height : customHeight
+                                  const width = selectedSocialTemplate ? selectedSocialTemplate.width : customWidth
+                                  const height = selectedSocialTemplate ? selectedSocialTemplate.height : customHeight
                                   optimizeImage(width, height)
                                 }}
                                 aspectRatio="free"
@@ -694,7 +694,7 @@ export default function ImageOptimizerPro() {
                               Resultado
                             </Badge>
                             <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                              {customWidth} × {customHeight}px
+                              {selectedSocialTemplate ? selectedSocialTemplate.width : customWidth} × {selectedSocialTemplate ? selectedSocialTemplate.height : customHeight}px
                             </Badge>
                           </div>
                           <div className="rounded-xl overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-700/80 dark:to-blue-600/80 p-4 border-2 border-blue-200 dark:border-blue-400 relative">
