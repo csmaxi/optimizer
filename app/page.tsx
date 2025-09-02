@@ -490,59 +490,17 @@ export default function ImageOptimizerPro() {
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2 h-10">
-                  <FileImage className="w-4 h-4" />
-                  Marca de Agua
+                  <Sun className="w-4 h-4" />
+                  Ajustes
                 </Button>
               </PopoverTrigger>
-              <WatermarkPopover
-                applyWatermark={watermarkHook.applyWatermark}
-                setApplyWatermark={watermarkHook.setApplyWatermark}
-                watermarkFileInputRef={watermarkHook.watermarkFileInputRef as React.RefObject<HTMLInputElement>}
-                handleWatermarkFileSelect={watermarkHook.handleWatermarkFileSelect}
-                watermarkFile={watermarkHook.watermarkFile}
-                setWatermarkFile={watermarkHook.setWatermarkFile}
-                setWatermarkPreviewUrl={watermarkHook.setWatermarkPreviewUrl}
-                watermarkPreviewUrl={watermarkHook.watermarkPreviewUrl}
-                watermarkPosition={watermarkHook.watermarkPosition}
-                setWatermarkPosition={watermarkHook.setWatermarkPosition}
-                watermarkOpacity={watermarkHook.watermarkOpacity}
-                setWatermarkOpacity={watermarkHook.setWatermarkOpacity}
-                debouncedWatermarkOpacity={watermarkHook.debouncedWatermarkOpacity}
-                watermarkSize={watermarkHook.watermarkSize}
-                setWatermarkSize={watermarkHook.setWatermarkSize}
-                debouncedWatermarkSize={watermarkHook.debouncedWatermarkSize}
-              />
-            </Popover>
-
-            <Separator orientation="vertical" className="h-6" />
-
-
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 h-10">
-                  <Sparkles className="w-4 h-4" />
-                  Plantillas
-                </Button>
-              </PopoverTrigger>
-              <SocialTemplatesPopover
-                onTemplateSelect={handleSocialTemplateSelect}
-                selectedTemplate={selectedSocialTemplate}
-              />
-            </Popover>
-
-            <Separator orientation="vertical" className="h-6" />
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 h-10">
-                  <Palette className="w-4 h-4" />
-                  Formato
-                </Button>
-              </PopoverTrigger>
-              <FormatQualityPopover
-                outputFormat={outputFormat}
-                setOutputFormat={setOutputFormat}
+              <AdjustmentsPopover
+                brightness={brightness}
+                setBrightness={setBrightness}
+                contrast={contrast}
+                setContrast={setContrast}
+                saturation={saturation}
+                setSaturation={setSaturation}
               />
             </Popover>
 
@@ -570,17 +528,57 @@ export default function ImageOptimizerPro() {
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2 h-10">
-                  <Sun className="w-4 h-4" />
-                  Ajustes
+                  <Sparkles className="w-4 h-4" />
+                  Plantillas
                 </Button>
               </PopoverTrigger>
-              <AdjustmentsPopover
-                brightness={brightness}
-                setBrightness={setBrightness}
-                contrast={contrast}
-                setContrast={setContrast}
-                saturation={saturation}
-                setSaturation={setSaturation}
+              <SocialTemplatesPopover
+                onTemplateSelect={handleSocialTemplateSelect}
+                selectedTemplate={selectedSocialTemplate}
+              />
+            </Popover>
+
+            <Separator orientation="vertical" className="h-6" />
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2 h-10">
+                  <FileImage className="w-4 h-4" />
+                  Marca de Agua
+                </Button>
+              </PopoverTrigger>
+              <WatermarkPopover
+                applyWatermark={watermarkHook.applyWatermark}
+                setApplyWatermark={watermarkHook.setApplyWatermark}
+                watermarkFileInputRef={watermarkHook.watermarkFileInputRef as React.RefObject<HTMLInputElement>}
+                handleWatermarkFileSelect={watermarkHook.handleWatermarkFileSelect}
+                watermarkFile={watermarkHook.watermarkFile}
+                setWatermarkFile={watermarkHook.setWatermarkFile}
+                setWatermarkPreviewUrl={watermarkHook.setWatermarkPreviewUrl}
+                watermarkPreviewUrl={watermarkHook.watermarkPreviewUrl}
+                watermarkPosition={watermarkHook.watermarkPosition}
+                setWatermarkPosition={watermarkHook.setWatermarkPosition}
+                watermarkOpacity={watermarkHook.watermarkOpacity}
+                setWatermarkOpacity={watermarkHook.setWatermarkOpacity}
+                debouncedWatermarkOpacity={watermarkHook.debouncedWatermarkOpacity}
+                watermarkSize={watermarkHook.watermarkSize}
+                setWatermarkSize={watermarkHook.setWatermarkSize}
+                debouncedWatermarkSize={watermarkHook.debouncedWatermarkSize}
+              />
+            </Popover>
+
+            <Separator orientation="vertical" className="h-6" />
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2 h-10">
+                  <Palette className="w-4 h-4" />
+                  Formato
+                </Button>
+              </PopoverTrigger>
+              <FormatQualityPopover
+                outputFormat={outputFormat}
+                setOutputFormat={setOutputFormat}
               />
             </Popover>
 
